@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Healthcare AI — Evaluation Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg:      #0d1117; --bg2: #161b22; --bg3: #21262d;
+  --border:  rgba(255,255,255,0.08);
+  --text:    #e6edf3; --muted: #8b949e; --dim: #484f58;
+  --blue:    #4a9eff; --green: #3fb950; --yellow: #d29922; --orange: #f97316;
+  --blue-bg: rgba(74,158,255,0.1); --green-bg: rgba(63,185,80,0.1);
+  --radius:  10px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.6; }
+.sidebar { position:fixed; top:0; left:0; width:220px; height:100vh; background:var(--bg2); border-right:1px solid var(--border); padding:28px 0; overflow-y:auto; z-index:100; }
+.sidebar-logo { padding:0 20px 24px; font-weight:600; font-size:13px; color:var(--text); border-bottom:1px solid var(--border); margin-bottom:16px; }
+.sidebar-logo span { display:block; font-size:10px; color:var(--muted); font-weight:400; margin-top:2px; }
+.nav-section { padding:0 20px; margin-bottom:8px; font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; }
+.nav-link { display:block; padding:7px 20px; font-size:13px; color:var(--muted); text-decoration:none; border-left:2px solid transparent; transition:color .15s, border-color .15s, background .15s; }
+.nav-link:hover { color:var(--text); background:rgba(255,255,255,0.04); border-left-color:var(--blue); }
+.main { margin-left:220px; padding:40px 48px; max-width:1200px; }
+.section { margin-bottom:52px; }
+.section-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); padding-bottom:10px; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.page-header { margin-bottom:48px; }
+.page-header h1 { font-size:26px; font-weight:600; color:#fff; margin-bottom:6px; }
+.page-header p  { color:var(--muted); font-size:14px; }
+.meta-row { display:flex; gap:12px; margin-top:14px; flex-wrap:wrap; }
+.badge { display:inline-flex; align-items:center; gap:6px; background:var(--bg3); border:1px solid var(--border); border-radius:20px; padding:4px 14px; font-size:12px; color:var(--muted); }
+.hero-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.hero-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; }
+.hero-label { font-size:11px; color:var(--muted); margin-bottom:10px; }
+.hero-vals { display:flex; gap:18px; align-items:baseline; }
+.hero-val { font-size:26px; font-weight:700; line-height:1; }
+.hero-sub { font-size:10px; color:var(--dim); margin-top:4px; }
+.v-blue { color:var(--blue); } .v-green { color:var(--green); }
+.charts-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.chart-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:22px; }
+.chart-card h3 { font-size:13px; font-weight:500; color:var(--muted); margin-bottom:16px; }
+.chart-wrap { position:relative; height:270px; }
+.legend { display:flex; gap:18px; margin-bottom:14px; }
+.legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+.legend-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+.summary-table { width:100%; border-collapse:collapse; font-size:13px; }
+.summary-table th { text-align:left; font-size:11px; font-weight:500; color:var(--muted); padding:8px 12px; border-bottom:1px solid var(--border); }
+.summary-table td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.04); }
+.summary-table tr:last-child td { border-bottom:none; }
+.score-cell { display:flex; align-items:center; gap:8px; }
+.score-bar { width:70px; height:5px; background:rgba(255,255,255,0.07); border-radius:3px; flex-shrink:0; }
+.score-fill-s { height:5px; border-radius:3px; background:var(--blue); }
+.score-fill-m { height:5px; border-radius:3px; background:var(--green); }
+.eff-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.eff-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; }
+.eff-card h4 { font-size:10px; color:var(--muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:.08em; }
+.eff-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; }
+.eff-name { color:var(--muted); } .eff-val { font-weight:600; }
+.eff-note { font-size:10px; color:var(--dim); margin-top:8px; }
+.multi-win { color:var(--green); font-weight:600; font-size:12px; }
+.single-win { color:var(--blue); font-weight:600; font-size:12px; }
+.tie { color:var(--dim); font-size:12px; }
+.score-win { color:var(--text); font-weight:600; }
+.score-lose { color:var(--muted); }
+.case-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:28px; }
+.case-header { display:flex; align-items:center; gap:12px; padding:14px 20px; background:var(--bg3); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.case-badge { background:var(--blue-bg); color:var(--blue); border-radius:6px; padding:2px 10px; font-size:11px; font-weight:600; }
+.case-title { font-weight:500; font-size:14px; flex:1; }
+.score-pill { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+.s-score { color:var(--blue); font-weight:600; } .m-score { color:var(--green); font-weight:600; } .vs-sep { color:var(--dim); }
+.case-body { display:grid; grid-template-columns:340px 1fr; }
+.score-col { padding:20px; border-right:1px solid var(--border); }
+.output-col { display:grid; grid-template-columns:1fr 1fr; }
+.output-pane { padding:20px; }
+.output-pane:first-child { border-right:1px solid var(--border); }
+.col-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; color:var(--muted); }
+.single-lbl { color:var(--blue); } .multi-lbl { color:var(--green); }
+.output-text { font-size:11px; color:var(--muted); font-family:"SF Mono","Fira Code","Consolas",monospace; white-space:pre-wrap; word-break:break-word; line-height:1.65; max-height:420px; overflow-y:auto; }
+.score-table { width:100%; border-collapse:collapse; font-size:12px; }
+.score-table th { text-align:left; font-size:10px; color:var(--dim); padding:4px 8px; border-bottom:1px solid var(--border); }
+.score-table td { padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.03); }
+.score-table tr:last-child td { border-bottom:none; font-weight:600; }
+.mini-bar { width:40px; height:3px; background:rgba(255,255,255,0.07); border-radius:2px; margin-top:3px; }
+.mini-fill { height:3px; border-radius:2px; } .mini-s { background:var(--blue); } .mini-m { background:var(--green); }
+.tabs { display:flex; gap:4px; margin-bottom:12px; }
+.tab-btn { padding:4px 12px; font-size:11px; border-radius:6px; cursor:pointer; background:transparent; border:1px solid var(--border); color:var(--muted); transition:background .15s, color .15s; }
+.tab-btn.active, .tab-btn:hover { background:var(--green-bg); color:var(--green); border-color:var(--green); }
+.tab-panel { display:none; } .tab-panel.active { display:block; }
+/* FIX: New alert styles */
+.safety-flag { padding:6px 20px; background:rgba(217,119,6,0.1); border-left:3px solid var(--yellow); font-size:12px; color:var(--yellow); }
+.consistency-note { padding:6px 20px; background:rgba(249,115,22,0.08); border-left:3px solid var(--orange); font-size:11px; color:var(--orange); }
+.trunc-warn { padding:6px 20px; background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; font-size:12px; color:#ef4444; }
+.info-box { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:16px 20px; color:var(--muted); font-size:13px; }
+.info-box code { background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:4px; font-size:12px; }
+.limitations-box { background:rgba(217,119,6,0.06); border:1px solid rgba(217,119,6,0.3); border-radius:8px; padding:16px 20px; }
+.limitations-box li { color:var(--muted); font-size:13px; margin-bottom:6px; list-style:disc; margin-left:16px; }
+.dim { color:var(--dim); }
+.footer { text-align:center; padding:28px 0 12px; color:var(--dim); font-size:12px; border-top:1px solid var(--border); margin-top:40px; }
+@media (max-width:1000px) {
+  .sidebar { display:none; } .main { margin-left:0; padding:24px 20px; }
+  .hero-grid { grid-template-columns:1fr 1fr; } .charts-row { grid-template-columns:1fr; }
+  .eff-grid { grid-template-columns:1fr 1fr; } .case-body { grid-template-columns:1fr; }
+  .output-col { grid-template-columns:1fr; } .output-pane:first-child { border-right:none; border-bottom:1px solid var(--border); }
+  .score-col { border-right:none; border-bottom:1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">Healthcare AI<span>Evaluation Report</span></div>
+  <div class="nav-section">Sections</div>
+  <a class="nav-link" href="#summary">Summary</a>
+  <a class="nav-link" href="#scores">Score Breakdown</a>
+  <a class="nav-link" href="#efficiency">Efficiency</a>
+  <a class="nav-link" href="#ablation">Ablation Study</a>
+  <a class="nav-link" href="#limitations">Limitations</a>
+  <a class="nav-link" href="#cases">Case Results</a>
+  <div class="nav-section" style="margin-top:16px;">Cases</div>
+  <a href="#case-4" class="nav-link">Case 4: Paediatric Fever with Petechial Rash — Diagnostic Emergency<span style="display:block;font-size:10px;color:var(--dim);margin-top:1px">Paediatrics / Emergency</span></a>
+</nav>
+
+<main class="main">
+  <div class="page-header">
+    <h1>Healthcare AI Evaluation</h1>
+    <p>Single-Agent vs Multi-Agent Clinical Reasoning — Comparative Study</p>
+    <div class="meta-row">
+      <span class="badge">Model: bedrock/us.amazon.nova-pro-v1:0</span>
+      <span class="badge">Provider: AWS Bedrock</span>
+      <span class="badge">1 clinical case(s)</span>
+      <span class="badge">Generated: May 18, 2026 at 18:58</span>
+    </div>
+  </div>
+
+  <div class="section" id="summary">
+    <div class="section-title">Summary</div>
+    <div class="hero-grid">
+      <div class="hero-card"><div class="hero-label">Overall Score</div>
+        <div class="hero-vals">
+          <div><div class="hero-val v-blue">8.0</div><div class="hero-sub">Single-Agent</div></div>
+          <div><div class="hero-val v-green">9.0</div><div class="hero-sub">Multi-Agent</div></div>
+        </div></div>
+      <div class="hero-card"><div class="hero-label">Avg Latency</div>
+        <div class="hero-vals">
+          <div><div class="hero-val v-blue">5.3s</div><div class="hero-sub">Single-Agent</div></div>
+          <div><div class="hero-val v-green">19.2s</div><div class="hero-sub">Multi-Agent</div></div>
+        </div></div>
+      <div class="hero-card"><div class="hero-label">Avg Tokens Used</div>
+        <div class="hero-vals">
+          <div><div class="hero-val v-blue">768</div><div class="hero-sub">Single-Agent</div></div>
+          <div><div class="hero-val v-green">5528</div><div class="hero-sub">Multi-Agent</div></div>
+        </div></div>
+      <div class="hero-card"><div class="hero-label">Keyword Coverage (final out)</div>
+        <div class="hero-vals">
+          <div><div class="hero-val v-blue">47%</div><div class="hero-sub">Single-Agent</div></div>
+          <div><div class="hero-val v-green">53%</div><div class="hero-sub">Multi-Agent</div></div>
+        </div></div>
+    </div>
+  </div>
+
+  <div class="section" id="scores">
+    <div class="section-title">Score Breakdown</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4a9eff"></div>Single-Agent</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3fb950"></div>Multi-Agent</div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><h3>Radar — Quality Dimensions</h3><div class="chart-wrap"><canvas id="radarChart"></canvas></div></div>
+      <div class="chart-card"><h3>Bar — Average Score per Metric</h3><div class="chart-wrap"><canvas id="barChart"></canvas></div></div>
+    </div>
+    <div style="margin-top:20px;">
+      <table class="summary-table">
+        <thead><tr><th>Metric</th><th>Single-Agent</th><th>Multi-Agent</th><th>Winner</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Diagnostic Accuracy</td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-s" style="width:80.0%"></div></div>
+                8.0
+              </div>
+            </td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-m" style="width:90.0%"></div></div>
+                9.0
+              </div>
+            </td>
+            <td class="multi-win">Multi ▲</td>
+          </tr>
+          <tr>
+            <td>Reasoning Depth</td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-s" style="width:70.0%"></div></div>
+                7.0
+              </div>
+            </td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-m" style="width:90.0%"></div></div>
+                9.0
+              </div>
+            </td>
+            <td class="multi-win">Multi ▲</td>
+          </tr>
+          <tr>
+            <td>Treatment Completeness</td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-s" style="width:80.0%"></div></div>
+                8.0
+              </div>
+            </td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-m" style="width:90.0%"></div></div>
+                9.0
+              </div>
+            </td>
+            <td class="multi-win">Multi ▲</td>
+          </tr>
+          <tr>
+            <td>Safety Awareness</td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-s" style="width:60.0%"></div></div>
+                6.0
+              </div>
+            </td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-m" style="width:80.0%"></div></div>
+                8.0
+              </div>
+            </td>
+            <td class="multi-win">Multi ▲</td>
+          </tr>
+          <tr>
+            <td>Clinical Structure</td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-s" style="width:90.0%"></div></div>
+                9.0
+              </div>
+            </td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-m" style="width:100.0%"></div></div>
+                10.0
+              </div>
+            </td>
+            <td class="multi-win">Multi ▲</td>
+          </tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section" id="efficiency">
+    <div class="section-title">Efficiency Trade-off</div>
+    <div class="eff-grid">
+      <div class="eff-card"><h4>Tokens Used</h4>
+        <div class="eff-row"><span class="eff-name">Single-Agent</span><span class="eff-val v-blue">768</span></div>
+        <div class="eff-row"><span class="eff-name">Multi-Agent</span><span class="eff-val v-green">5528</span></div>
+        <div class="eff-note">Multi uses ~7.2× more tokens</div></div>
+      <div class="eff-card"><h4>Latency</h4>
+        <div class="eff-row"><span class="eff-name">Single-Agent</span><span class="eff-val v-blue">5.33s</span></div>
+        <div class="eff-row"><span class="eff-name">Multi-Agent</span><span class="eff-val v-green">19.18s</span></div>
+        <div class="eff-note">Multi is ~3.6× slower</div></div>
+      <div class="eff-card"><h4>LLM API Calls</h4>
+        <div class="eff-row"><span class="eff-name">Single-Agent</span><span class="eff-val v-blue">1</span></div>
+        <div class="eff-row"><span class="eff-name">Multi-Agent</span><span class="eff-val v-green">3</span></div>
+        <div class="eff-note">Planner → Reasoner → Verifier</div></div>
+      <div class="eff-card"><h4>Keyword Coverage</h4>
+        <div class="eff-row"><span class="eff-name">Final Output (fair)</span></div>
+        <div class="eff-row"><span class="eff-name">· Single</span><span class="eff-val v-blue">46.7%</span></div>
+        <div class="eff-row"><span class="eff-name">· Multi</span><span class="eff-val v-green">53.3%</span></div>
+        <div class="eff-row" style="margin-top:8px"><span class="eff-name">Pipeline (all steps)</span></div>
+        <div class="eff-row"><span class="eff-name">· Single</span><span class="eff-val v-blue">46.7%</span></div>
+        <div class="eff-row"><span class="eff-name">· Multi</span><span class="eff-val v-green">60.0%</span></div>
+        <div class="eff-note">Final-output is the fair comparison; pipeline shows Verifier condensation effect</div></div>
+    </div>
+  </div>
+
+  
+    <div class="section" id="ablation">
+      <div class="section-title">Ablation Study — Marginal Agent Contribution</div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:20px">
+        Each agent is added incrementally to isolate its contribution to the overall score.
+        The Reasoner adds +2.00 pts; the Verifier adds +1.50 pts.
+      </p>
+      <div class="charts-row" style="grid-template-columns:1fr 1fr;gap:20px">
+        <div class="chart-card">
+          <h3>Overall Score by Pipeline Depth</h3>
+          <div class="chart-wrap"><canvas id="ablationChart"></canvas></div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:22px">
+          <h3 style="font-size:13px;color:var(--muted);margin-bottom:16px">Average Overall Score</h3>
+          <table class="summary-table">
+            <thead><tr><th>Pipeline</th><th>Score /10</th><th>What it adds</th></tr></thead>
+            <tbody>
+          <tr>
+            <td>Planner Only</td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-m" style="width:55.0%"></div></div>
+                5.5
+              </div>
+            </td>
+            <td class="dim" style="font-size:11px">Decompose only — no diagnosis</td>
+          </tr>
+          <tr>
+            <td>Planner + Reasoner</td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-m" style="width:75.0%"></div></div>
+                7.5
+              </div>
+            </td>
+            <td class="dim" style="font-size:11px">Diagnose + treat — no safety check</td>
+          </tr>
+          <tr>
+            <td>Full Pipeline</td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar"><div class="score-fill-m" style="width:90.0%"></div></div>
+                9.0
+              </div>
+            </td>
+            <td class="dim" style="font-size:11px">Full pipeline with safety verification</td>
+          </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <script>
+      new Chart(document.getElementById('ablationChart'), {
+        type: 'bar',
+        data: {
+          labels: ['Planner Only', 'Planner + Reasoner', 'Full Pipeline'],
+          datasets: [{
+            label: 'Overall Score',
+            data: [5.5, 7.5, 9.0],
+            backgroundColor: ['rgba(139,92,246,0.6)','rgba(251,146,60,0.6)','rgba(63,185,80,0.7)'],
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { min: 0, max: 10, ticks: { stepSize: 2, color: '#8b949e' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            x: { ticks: { color: '#8b949e' }, grid: { display: false } }
+          }
+        }
+      });
+      </script>
+    </div>
+
+  <!-- FIX: Limitations section — was entirely missing from the original report -->
+  <div class="section" id="limitations">
+    <div class="section-title">Limitations &amp; Threats to Validity</div>
+    <div class="limitations-box">
+      <ul>
+        <li><strong>Judge model bias:</strong> The LLM judge (Nova Lite) belongs to the same model family as the agents (Nova Pro). This may introduce familiarity or agreement bias. A cross-family judge (e.g. Claude, GPT-4) would strengthen validity.</li>
+        <li><strong>Sample size:</strong> Results are averaged over 1 case(s). Specialty-level conclusions require more cases per specialty to be statistically meaningful.</li>
+        <li><strong>Stochastic variance:</strong> LLM outputs vary across runs. Mean ± std across 1 run(s) is reported; higher run counts reduce variance.</li>
+        <li><strong>Safety metric conflict:</strong> Rule-based safety flags (keyword check on final output) and LLM Safety Awareness scores measure different things. Conflicts between them should be interpreted manually, not as contradictions.</li>
+        <li><strong>Keyword coverage:</strong> Pipeline coverage gives multi-agent a larger text-search surface. Use final-output coverage for fair architectural comparison.</li>
+        <li><strong>No ground truth:</strong> Evaluation relies on LLM-as-judge and heuristics, not validated clinical outcomes. Results reflect reasoning quality proxies, not patient outcomes.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section" id="cases">
+    <div class="section-title">Case Results — Scores &amp; Full Outputs</div>
+    
+      <div class="case-card" id="case-4">
+        <div class="case-header">
+          <span class="case-badge">Case 4</span>
+          <span class="case-title">Paediatric Fever with Petechial Rash — Diagnostic Emergency</span>
+          <span style="font-size:11px;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:1px 8px">Paediatrics / Emergency</span>
+          <span class="score-pill">
+            <span class="s-score">8.0/10</span>
+            <span class="vs-sep">vs</span>
+            <span class="m-score">9.0/10</span>
+          </span>
+        </div>
+        
+        
+        <div class="case-body">
+          <div class="score-col">
+            <p class="col-label">Scores</p>
+            <table class="score-table">
+              <thead><tr><th>Metric</th><th style="color:#4a9eff">Single</th><th style="color:#4ade80">Multi</th><th>Winner</th></tr></thead>
+              <tbody>
+              <tr>
+                <td class="dim">Diagnostic Accuracy</td>
+                <td class="score-lose">8.0
+                  <div class="mini-bar"><div class="mini-fill mini-s" style="width:80.0%"></div></div>
+                </td>
+                <td class="score-win">9.0
+                  <div class="mini-bar"><div class="mini-fill mini-m" style="width:90.0%"></div></div>
+                </td>
+                <td class="multi-win">Multi ▲</td>
+              </tr>
+              <tr>
+                <td class="dim">Reasoning Depth</td>
+                <td class="score-lose">7.0
+                  <div class="mini-bar"><div class="mini-fill mini-s" style="width:70.0%"></div></div>
+                </td>
+                <td class="score-win">9.0
+                  <div class="mini-bar"><div class="mini-fill mini-m" style="width:90.0%"></div></div>
+                </td>
+                <td class="multi-win">Multi ▲</td>
+              </tr>
+              <tr>
+                <td class="dim">Treatment Completeness</td>
+                <td class="score-lose">8.0
+                  <div class="mini-bar"><div class="mini-fill mini-s" style="width:80.0%"></div></div>
+                </td>
+                <td class="score-win">9.0
+                  <div class="mini-bar"><div class="mini-fill mini-m" style="width:90.0%"></div></div>
+                </td>
+                <td class="multi-win">Multi ▲</td>
+              </tr>
+              <tr>
+                <td class="dim">Safety Awareness</td>
+                <td class="score-lose">6.0
+                  <div class="mini-bar"><div class="mini-fill mini-s" style="width:60.0%"></div></div>
+                </td>
+                <td class="score-win">8.0
+                  <div class="mini-bar"><div class="mini-fill mini-m" style="width:80.0%"></div></div>
+                </td>
+                <td class="multi-win">Multi ▲</td>
+              </tr>
+              <tr>
+                <td class="dim">Clinical Structure</td>
+                <td class="score-lose">9.0
+                  <div class="mini-bar"><div class="mini-fill mini-s" style="width:90.0%"></div></div>
+                </td>
+                <td class="score-win">10.0
+                  <div class="mini-bar"><div class="mini-fill mini-m" style="width:100.0%"></div></div>
+                </td>
+                <td class="multi-win">Multi ▲</td>
+              </tr>
+              <tr>
+                <td class="dim">Overall</td>
+                <td class="score-lose">8.0
+                  <div class="mini-bar"><div class="mini-fill mini-s" style="width:80.0%"></div></div>
+                </td>
+                <td class="score-win">9.0
+                  <div class="mini-bar"><div class="mini-fill mini-m" style="width:90.0%"></div></div>
+                </td>
+                <td class="multi-win">Multi ▲</td>
+              </tr>
+              <tr style="border-top:1px solid rgba(255,255,255,0.06)">
+                <td class="dim" style="font-size:10px">Keyword (final out %)</td>
+                <td class="score-win">47%</td>
+                <td class="score-win">53%</td>
+                <td class="multi-win">Multi ▲</td>
+              </tr>
+              <tr>
+                <td class="dim" style="font-size:10px">Keyword (pipeline %)</td>
+                <td class="score-win">47%</td>
+                <td class="score-win">60%</td>
+                <td class="multi-win">Multi ▲</td>
+              </tr></tbody>
+            </table>
+          </div>
+          <div class="output-col">
+            <div class="output-pane">
+              <p class="col-label single-lbl">Single-Agent output</p>
+              <pre class="output-text">### Clinical Assessment
+
+**1. Primary Diagnosis:**
+- **Meningococcemia with Sepsis and Septic Shock**
+
+**2. Differential Diagnoses:**
+- **Rocky Mountain Spotted Fever (RMSF)**
+- **Kawasaki Disease**
+- **Acute Febrile Neutrophilic Dermatosis (Sweet's Syndrome)**
+
+**3. Immediate Treatment Plan:**
+- **Stabilization:**
+  - Initiate broad-spectrum antibiotics (e.g., Ceftriaxone) immediately.
+  - Administer IV fluids for hypovolemia and shock.
+  - Consider vasopressors if hypotension persists despite fluid resuscitation.
+  - Correct hypoglycemia with IV dextrose.
+  - Administer IV corticosteroids (e.g., dexamethasone) before or with the first dose of antibiotics to reduce inflammation.
+- **Supportive Care:**
+  - Close monitoring in a pediatric intensive care unit (PICU).
+  - Supplemental oxygen if needed to maintain saturation.
+  - Consider platelet transfusion if significant bleeding or very low platelet count.
+
+**4. Key Investigations:**
+- **Blood Cultures:** Already drawn, monitor for results.
+- **Lumbar Puncture:** Perform if clinically stable to confirm meningitis.
+- **Coagulation Profile:** Repeat to monitor for disseminated intravascular coagulation (DIC).
+- **Electrolytes and Glucose:** Regular monitoring and correction as needed.
+- **CBC with Differential:** Monitor for changes in WBC and platelet count.
+- **Lactate:** Recheck to assess response to treatment and perfusion status.
+
+**5. Disposition:**
+- **Admit to PICU:** For close monitoring, advanced care, and management of potential complications such as DIC, multi-organ failure, and continued septic shock.
+- **Infectious Disease Consultation:** For guidance on antibiotic management.
+- **Neurology Consultation:** If lumbar puncture confirms meningitis.</pre>
+            </div>
+            <div class="output-pane">
+              <p class="col-label multi-lbl">Multi-Agent pipeline</p>
+              <div class="tabs"><button class="tab-btn " onclick="switchTab(this,'step-4-0')">Planner</button><button class="tab-btn " onclick="switchTab(this,'step-4-1')">Reasoner</button><button class="tab-btn active" onclick="switchTab(this,'step-4-2')">Verifier</button></div>
+              <div id="step-4-0" class="tab-panel "><pre class="output-text">### Clinical Case Reasoning Plan
+
+#### 1. Critical Clinical Findings:
+1. **High fever (39.8°C)** with rapid onset and progression.
+2. **Non-blanching petechial rash** starting on lower limbs and spreading to trunk.
+3. **Neck stiffness** and **photophobia**, suggestive of meningeal irritation.
+4. **Altered mental status** (GCS 13/15, confused, slow to respond).
+5. **Laboratory findings**: 
+   - Elevated WBC (22,000) with neutrophilia (88% neutrophils).
+   - Elevated CRP (310 mg/L) and Procalcitonin (18 ng/mL), indicating severe inflammation and likely bacterial infection.
+   - Thrombocytopenia (platelets 68,000) and coagulopathy (low fibrinogen, prolonged PT).
+   - Hypoglycemia (blood glucose 3.1 mmol/L) and hyponatremia (Na 129).
+   - Elevated lactate (4.2 mmol/L), suggesting tissue hypoperfusion.
+
+#### 2. Ambiguous or Misleading Findings:
+1. **Initial assumption of allergic reaction** by parents due to rash, which could delay recognition of a more serious condition.
+2. **Normal oxygen saturation (95%)** on room air might mislead to underestimate the severity of the illness.
+3. **Clear chest X-ray** might falsely reassure that there is no significant pulmonary involvement.
+
+#### 3. Potential Red Herrings:
+1. **History of classmates having "flu-like illness"** might lead to an initial misdirection towards a viral etiology.
+2. **Up-to-date vaccinations** might create a false sense of security regarding preventable bacterial infections.
+3. **No recent travel** might mislead to overlook exotic or less common infections.
+
+#### 4. Top 3 Competing Diagnoses to Investigate:
+1. **Meningococcemia** given the rapid onset of fever, petechial rash, and signs of meningeal irritation.
+2. **Septic shock** secondary to another bacterial infection, given the lab findings of severe inflammation and coagulopathy.
+3. **Rocky Mountain Spotted Fever (RMSF)** or other rickettsial diseases, though less common, should be considered due to the rash and systemic symptoms.
+
+#### 5. Specific Sub-tasks for the Reasoner:
+1. **Evaluate the progression and characteristics of the rash** to differentiate between meningococcemia, RMSF, and other causes.
+2. **Assess the significance of the lumbar puncture** findings once available, to confirm or rule out meningitis.
+3. **Interpret the blood culture results** to identify the causative organism.
+4. **Determine the extent of coagulopathy** and its implications for treatment and prognosis.
+5. **Review the necessity and</pre></div><div id="step-4-1" class="tab-panel "><pre class="output-text">### Step-by-Step Clinical Reasoning
+
+#### 1. Address Each Ambiguous Finding
+
+1. **Initial assumption of allergic reaction by parents due to rash:**
+   - **Interpretation:** The parents' initial assumption of an allergic reaction is a common misconception because rashes can be non-specific. However, the rapid progression and association with high fever, neck stiffness, and altered mental status strongly suggest a more severe infectious etiology rather than a simple allergic reaction.
+
+2. **Normal oxygen saturation (95%) on room air:**
+   - **Interpretation:** Despite normal oxygen saturation, the patient exhibits signs of severe systemic illness (high fever, altered mental status, coagulopathy). Normal saturation does not rule out severe infection or shock. It may provide a false sense of security if not interpreted in the context of other critical findings.
+
+3. **Clear chest X-ray:**
+   - **Interpretation:** A clear chest X-ray indicates no primary pulmonary source of infection, which is important but does not exclude a systemic bacterial infection. It helps rule out pneumonia but doesn’t negate the possibility of meningococcemia or septic shock.
+
+#### 2. For Each Competing Diagnosis: State Evidence For and Against
+
+1. **Meningococcemia:**
+   - **Evidence For:**
+     - Rapid onset of fever and petechial rash.
+     - Signs of meningeal irritation (neck stiffness, photophobia).
+     - Laboratory findings: elevated WBC with neutrophilia, elevated CRP and procalcitonin, thrombocytopenia, coagulopathy.
+   - **Evidence Against:**
+     - Up-to-date vaccinations including MenB and MenACWY (though breakthrough infections can occur).
+
+2. **Septic Shock Secondary to Another Bacterial Infection:**
+   - **Evidence For:**
+     - Severe systemic inflammation (elevated WBC, CRP, procalcitonin).
+     - Signs of poor perfusion (elevated lactate, hypoglycemia, altered mental status).
+     - Coagulopathy (thrombocytopenia, low fibrinogen, prolonged PT).
+   - **Evidence Against:**
+     - The characteristic petechial rash is more typical of meningococcemia, though not exclusive.
+
+3. **Rocky Mountain Spotted Fever (RMSF) or Other Rickettsial Diseases:**
+   - **Evidence For:**
+     - Petechial rash and systemic symptoms (fever, headache, vomiting).
+   - **Evidence Against:**
+     - Rapid progression and severity of symptoms are more characteristic of meningococcemia. 
+     - No known recent travel or tick exposure history provided.
+
+#### 3. Conclude with Primary Diagnosis (confidence %) and Clearest Supporting Evidence
+- **Primary Diagnosis: Meningococcemia (90% confidence)**
+  - **Clearest Supporting Evidence:**
+    - Rapid onset of fever with a spreading petechial rash.
+    - Signs of meningeal irritation (neck stiffness, photophobia).
+    - Laboratory findings consistent with severe bacterial infection and coagulopathy.
+
+#### 4. List 2-3 Differentials Ruled Out — Explain Why Each Was Deprioritized
+1. **Allergic Reaction:**
+   - Ruled out due to the severity and rapid progression of symptoms, including high fever, altered mental status, and coagulopathy, which are not typical for a simple allergic reaction.
+2. **Viral Exanthem:**
+   - Ruled out because viral exanthems typically do not present with such severe systemic symptoms, high fever, neck stiffness, or coagulopathy.
+3. **Rocky Mountain Spotted Fever (RMSF):**
+   - Deprioritized due to the rapid progression and severity of symptoms, and the absence of known tick exposure or travel history typical for RMSF.
+
+#### 5. Propose IMMEDIATE Treatment with Priority Order (First 30 Min vs Next 2 Hours)
+- **First 30 Minutes:**
+  1. **Fluid Resuscitation:** Bolus with 20 mL/kg of isotonic crystalloid (e.g., Normal Saline) to address hypotension and poor perfusion.
+  2. **Empiric Antibiotics:** Administer broad-spectrum antibiotics (e.g., Ceftriaxone) to cover likely bacterial pathogens, including Neisseria meningitidis.
+  3. **Glucose Correction:** Administer intravenous dext</pre></div><div id="step-4-2" class="tab-panel active"><pre class="output-text">### Clinical Verification and Assessment
+
+#### 1. Challenge the Primary Diagnosis
+
+**Primary Diagnosis: Meningococcemia (90% confidence)**
+
+- **Evidence Supporting Diagnosis:**
+  - Rapid onset of fever with spreading petechial rash.
+  - Signs of meningeal irritation (neck stiffness, photophobia).
+  - Laboratory findings: elevated WBC with neutrophilia, elevated CRP and procalcitonin, thrombocytopenia, coagulopathy.
+
+- **Potential Missed Diagnoses:**
+  - **Acute disseminated intravascular coagulation (DIC) secondary to another severe infection:** Though meningococcemia is likely, DIC can occur in other severe infections and needs to be considered.
+  - **Other invasive bacterial infections:** Though less likely given the rash, other bacteria like Streptococcus pneumoniae or Haemophilus influenzae could present similarly.
+
+#### 2. Check Treatment Plan
+
+**First 30 Minutes:**
+1. **Fluid Resuscitation:** Bolus with 20 mL/kg of isotonic crystalloid (e.g., Normal Saline) to address hypotension and poor perfusion.
+2. **Empiric Antibiotics:** Administer broad-spectrum antibiotics (e.g., Ceftriaxone 100 mg/kg/day divided every 12 hours) to cover likely bacterial pathogens, including Neisseria meningitidis.
+3. **Glucose Correction:** Administer intravenous dextrose if hypoglycemia persists (e.g., 2 mL/kg of 10% dextrose).
+
+**Next 2 Hours:**
+1. **Continued Fluid Resuscitation:** Repeat fluid boluses as needed based on clinical response and hemodynamic status.
+2. **Corticosteroids:** Consider administering dexamethasone 0.15 mg/kg every 6 hours for 4 days if bacterial meningitis is confirmed, to reduce inflammation and potential neurological sequelae.
+3. **Close Monitoring:** Frequent vital sign checks, neurological assessments, and laboratory monitoring (CBC, coagulation profile, electrolytes, glucose).
+
+#### 3. Identify Any Missed Safety Concern, Drug Interaction, or Contraindication
+
+- **Safety Concerns:**
+  - **Monitoring for Anaphylaxis:** When administering antibiotics, especially cephalosporins, monitor for signs of anaphylaxis.
+  - **Electrolyte Imbalances:** Closely monitor electrolytes, particularly sodium and glucose, and correct as necessary.
+
+- **Drug Interactions:**
+  - No significant drug interactions identified with the proposed treatment plan.
+
+- **Contraindications:**
+  - Ensure no contraindications to cephalosporins (e.g., severe penicillin allergy).
+
+#### 4. Check if Any Life-Threatening Alternative Was Dismissed Too Quickly
+
+- **Consideration of Other Severe Infections:**
+  - Though meningococcemia is highly likely, continued vigilance for other invasive bacterial infections is warranted until cultures and further diagnostics confirm the etiology.
+
+#### 5. Add Any Critical Intervention or Monitoring Parameter That Was Omitted
+
+- **Lumbar Puncture:**
+  - Perform lumbar puncture for cerebrospinal fluid (CSF) analysis to confirm meningitis unless contraindicated by signs of increased intracranial pressure.
+  
+- **Coagulation Support:**
+  - If coagulopathy worsens, consider fresh frozen plasma or platelet transfusions.
+
+- **Ongoing Monitoring:**
+  - Continuous cardiac monitoring.
+  - Hourly urine output measurement.
+  - Regular assessment of rash progression and signs of compartment syndrome.
+
+### FINAL Verified Clinical Assessment
+
+**Primary Diagnosis: Meningococcemia**
+
+**Supporting Evidence:**
+- Rapid onset fever, spreading petechial rash, neck stiffness, photophobia.
+- Laboratory findings: elevated WBC, CRP, procalcitonin; thrombocytopenia, coagulopathy.
+
+**Differential Diagnoses Considered and Deprioritized:**
+- Allergic reaction (ruled out due to severity and rapid progression).
+- Viral exanthem (ruled out due to severe systemic symptoms).
+- Rocky Mountain Spotted Fever (deprioritized due to rapid progression and absence of tick exposure).
+
+**Immediate Treatment Plan:**
+- **First 30 Minutes:**
+  1. Fluid resuscitation with 20 mL/kg isotonic crystalloid.
+  2. Empiric antibiotics: Ceftriaxone 100 mg/kg/day divided every 12 hours.
+  3. Glucose correction if hypoglycemia persists.
+
+- **Next 2 Hours:**
+  1. Continued fluid resuscitation as needed.
+  2. Consider dexamethasone if bacterial meningitis is confirmed.
+  3. Close monitoring of vitals, neurological status, and labs.
+
+**Additional Critical Interventions:**
+- Perform lumbar puncture for CSF analysis.
+- Monitor for and manage coagulopathy.
+- Continuous cardiac and urine output monitoring.
+
+**Summary:**
+The patient presents with a high likelihood of meningococcemia based on clinical and laboratory findings. Immediate fluid resuscitation, empiric antibiotics, and close monitoring are critical. Lumbar puncture should be performed to confirm meningitis. Vigilance for other severe infections and ongoing assessment for complications such as DIC are essential.</pre></div>
+            </div>
+          </div>
+        </div>
+      </div>
+  </div>
+
+  <div class="footer">Healthcare AI Evaluation Report &nbsp;·&nbsp; May 18, 2026 at 18:58</div>
+</main>
+
+<script>
+const sData = [8.0, 7.0, 8.0, 6.0, 9.0];
+const mData = [9.0, 9.0, 9.0, 8.0, 10.0];
+const shortLabels = ['Diagnostic','Reasoning','Treatment','Safety','Structure'];
+const fullLabels  = ['Diagnostic Accuracy', 'Reasoning Depth', 'Treatment Completeness', 'Safety Awareness', 'Clinical Structure'];
+
+new Chart(document.getElementById('radarChart'), {
+  type: 'radar',
+  data: {
+    labels: fullLabels,
+    datasets: [
+      { label:'Single-Agent', data:sData, borderColor:'#4a9eff', backgroundColor:'rgba(74,158,255,0.1)', pointBackgroundColor:'#4a9eff', borderWidth:2 },
+      { label:'Multi-Agent',  data:mData, borderColor:'#3fb950', backgroundColor:'rgba(63,185,80,0.1)',  pointBackgroundColor:'#3fb950', borderWidth:2 }
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ display:false } },
+    scales:{ r:{ min:4, max:10, ticks:{ stepSize:2, color:'#484f58', font:{size:10} }, pointLabels:{ color:'#8b949e', font:{size:11} }, grid:{ color:'rgba(255,255,255,0.05)' }, angleLines:{ color:'rgba(255,255,255,0.05)' } } }
+  }
+});
+
+new Chart(document.getElementById('barChart'), {
+  type:'bar',
+  data:{
+    labels: shortLabels,
+    datasets:[
+      { label:'Single-Agent', data:sData, backgroundColor:'rgba(74,158,255,0.7)', borderRadius:4 },
+      { label:'Multi-Agent',  data:mData, backgroundColor:'rgba(63,185,80,0.7)',  borderRadius:4 }
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ display:false } },
+    scales:{
+      y:{ min:4, max:10, ticks:{ color:'#8b949e', stepSize:2 }, grid:{ color:'rgba(255,255,255,0.05)' } },
+      x:{ ticks:{ color:'#8b949e' }, grid:{ display:false } }
+    }
+  }
+});
+
+function switchTab(btn, panelId) {
+  const card = btn.closest('.output-pane');
+  card.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  card.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+</script>
+</body>
+</html>
